@@ -1,20 +1,15 @@
 from openai import OpenAI
-from google import genai
-from google.genai import types
 from RealtimeSTT import AudioToTextRecorder
 import re
 import json
 from dotenv import load_dotenv
 import os
+import threading
+import subprocess
 
 load_dotenv()
 
-# OpenAI conservé uniquement pour la synthèse vocale (Gemma n'a pas de TTS)
-openai_client = OpenAI(api_key=os.getenv("API_KEY"))
-
-# Gemma 4 via l'API Gemini de Google
-gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-MODEL_GEMMA = "gemma-4-26b-a4b-it"  # bon compromis vitesse/qualité ; voir alternatives ci-dessous
+client = OpenAI(api_key=os.getenv("API_KEY"))
 
 STT_INITIAL_PROMPT = (
     "Appel au 115, numéro d'urgence pour personnes sans-abri. "
@@ -23,7 +18,10 @@ STT_INITIAL_PROMPT = (
     "seul ou accompagné, en danger, handicap, adresse, rue, quartier, arrondissement."
 )
 
-SYSTEM_PROMPT = """
+messages = [
+    {
+        "role": "system",
+        "content": """
 1. ROLE :
 Tu es MIKI, un assistant IA intégré au 115, le numéro d'aide d'urgence pour les sans-abris.
 Tu sers de filtre entre les agents et les appelants.
@@ -66,7 +64,8 @@ Exemple exact à suivre :
 
 Ne mets rien d'autre après la balise </FICHE>.
 """
-
+    }
+]
 fiches = []
 
 
@@ -91,7 +90,6 @@ def parser_fiche(text):
             print("JSON invalide")
 
     return fiche
-
 def speak(text, recorder):
     text = re.sub(r"<FICHE>.*?</FICHE>", "", text, flags=re.DOTALL).strip()
 
@@ -101,18 +99,20 @@ def speak(text, recorder):
     recorder.set_microphone(False)
 
     try:
-        audio = openai_client.audio.speech.create(
+        audio = client.audio.speech.create(
             model="tts-1",
             voice="nova",
             input=text
         )
 
         audio.stream_to_file("voice.mp3")
-        os.system("afplay voice.mp3")
+
+        process = subprocess.Popen(["afplay", "voice.mp3"])
+        process.wait()
 
     finally:
+        recorder.clear_audio_queue()
         recorder.set_microphone(True)
-
 
 def listen(recorder):
 
@@ -128,36 +128,28 @@ def listen(recorder):
 def miki():
     print("debut")
     recorder = AudioToTextRecorder(
-        model="medium",
+        model="small",  # "medium" est nettement plus lent à transcrire sur CPU :
+        # c'est très probablement la vraie cause de tes 13 secondes, pas le VAD.
         language="fr",
-        debug_mode=True,
 
         device="cpu",
         compute_type="int8",
 
-        beam_size=8,
+        beam_size=1,
 
         initial_prompt=STT_INITIAL_PROMPT,
 
-        silero_sensitivity=0.25,
+        silero_sensitivity=0.3,
         silero_deactivity_detection=True,
         webrtc_sensitivity=3,
         post_speech_silence_duration=0.5,
+        early_transcription_on_silence=300,
+
+        print_transcription_time=True,  # affiche le temps réel pris par la transcription
 
         use_microphone=True,
     )
     print("fin")
-
-    # Session de chat Gemma : l'historique est géré automatiquement par le SDK
-    chat = gemini_client.chats.create(
-        model=MODEL_GEMMA,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            # Coupe le mode "thinking" de Gemma 4, activé par défaut et responsable
-            # d'une bonne partie de la latence pour un usage conversationnel simple.
-            #thinking_config=types.ThinkingConfig(thinking_level="MINIMAL"),
-        ),
-    )
 
     fiche = None
 
@@ -169,18 +161,40 @@ def miki():
             recorder.shutdown()
             return fiche
 
+        messages.append({
+            "role": "user",
+            "content": user
+        })
+
+        completion = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            stream=True
+        )
+
         response = ""
 
         print("\n🤖 ", end="", flush=True)
 
-        for chunk in chat.send_message_stream(user):
-            if chunk.text:
-                print(chunk.text, end="", flush=True)
-                response += chunk.text
+        for chunk in completion:
+
+            delta = chunk.choices[0].delta.content
+
+            if delta:
+                print(delta, end="", flush=True)
+                response += delta
 
         print()
 
-        speak(response, recorder)
+        messages.append({
+            "role": "assistant",
+            "content": response
+        })
+        threading.Thread(
+        target=speak,
+        args=(response, recorder),
+        daemon=True
+        ).start()
 
         fiche_tmp = parser_fiche(response)
 
