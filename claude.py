@@ -71,6 +71,7 @@ def parser_fiche(text):
 
     fiche = {
         "nom": None,
+        "prenom": None,
         "age": None,
         "sexe": None,
         "situation": None,
@@ -126,7 +127,7 @@ def listen(recorder):
 def miki():
     print("debut")
     recorder = AudioToTextRecorder(
-        model="small",  # "medium" est nettement plus lent à transcrire sur CPU :
+        model="medium",  # "medium" est nettement plus lent à transcrire sur CPU :
         # c'est très probablement la vraie cause de tes 13 secondes, pas le VAD.
         language="fr",
 
@@ -137,11 +138,11 @@ def miki():
 
         initial_prompt=STT_INITIAL_PROMPT,
 
-        silero_sensitivity=0.3,
+        silero_sensitivity=0.1,
         silero_deactivity_detection=True,
         webrtc_sensitivity=3,
-        post_speech_silence_duration=0.5,
-        early_transcription_on_silence=300,
+        post_speech_silence_duration=0.2,
+        early_transcription_on_silence=10,
 
         print_transcription_time=True,  # affiche le temps réel pris par la transcription
 

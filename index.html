@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIKI — Interface agents 115</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F4F5F7;
+    --surface: #FFFFFF;
+    --border: #E2E5EA;
+    --text: #1C2333;
+    --text-muted: #6B7280;
+    --navy: #1E3A5F;
+    --navy-dark: #14283F;
+    --urgent: #C1443B;
+    --urgent-bg: #FBEAE8;
+    --ok: #2F7D5D;
+    --ok-bg: #E9F4EE;
+    --inconnu: #8A93A6;
+    --inconnu-bg: #EEF0F3;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header {
+    background: var(--navy);
+    color: white;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .brand h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .brand span {
+    font-size: 13px;
+    color: #AEBFD6;
+    font-weight: 500;
+  }
+
+  .live {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #AEBFD6;
+    font-weight: 500;
+  }
+
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #5FD98A;
+    box-shadow: 0 0 0 0 rgba(95, 217, 138, 0.6);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(95, 217, 138, 0.5); }
+    70%  { box-shadow: 0 0 0 8px rgba(95, 217, 138, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(95, 217, 138, 0); }
+  }
+
+  main {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 32px;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .toolbar h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+
+  .dossier {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 18px 18px 22px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .dossier::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+  }
+
+  .dossier[data-urgence="urgent"]::before { background: var(--urgent); }
+  .dossier[data-urgence="ok"]::before { background: var(--ok); }
+  .dossier[data-urgence="inconnu"]::before { background: var(--inconnu); }
+
+  .dossier:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(30, 58, 95, 0.08);
+  }
+
+  .dossier:focus-visible {
+    outline: 2px solid var(--navy);
+    outline-offset: 2px;
+  }
+
+  .dossier-nom {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    margin: 0 0 4px 0;
+  }
+
+  .dossier-meta {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin: 0 0 12px 0;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+
+  .badge[data-urgence="urgent"] { background: var(--urgent-bg); color: var(--urgent); }
+  .badge[data-urgence="ok"] { background: var(--ok-bg); color: var(--ok); }
+  .badge[data-urgence="inconnu"] { background: var(--inconnu-bg); color: var(--inconnu); }
+
+  .dossier-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 12px;
+  }
+
+  .vide {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-muted);
+  }
+
+  .vide h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    color: var(--text);
+    font-size: 17px;
+    margin-bottom: 6px;
+  }
+
+  /* Panneau de détail */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 40, 63, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 10;
+  }
+
+  .overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 380px;
+    max-width: 90vw;
+    background: var(--surface);
+    box-shadow: -8px 0 24px rgba(20, 40, 63, 0.12);
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    z-index: 11;
+    padding: 28px;
+    overflow-y: auto;
+  }
+
+  .panel.open {
+    transform: translateX(0);
+  }
+
+  .panel-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 20px;
+    cursor: pointer;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    line-height: 1;
+  }
+
+  .panel-close:hover { color: var(--text); }
+
+  .panel h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    margin: 0 0 4px 0;
+    padding-right: 30px;
+  }
+
+  .panel .panel-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 22px;
+  }
+
+  .champ {
+    margin-bottom: 18px;
+  }
+
+  .champ-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .champ-valeur {
+    font-size: 15px;
+    color: var(--text);
+  }
+
+  .champ-valeur.absent {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>MIKI</h1>
+    <span>Interface agents · 115</span>
+  </div>
+  <div class="live">
+    <span class="live-dot"></span>
+    En direct
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <h2>Dossiers reçus</h2>
+    <span class="count" id="compteur">0 dossier</span>
+  </div>
+
+  <div id="grille" class="grid"></div>
+
+  <div id="vide" class="vide" style="display:none;">
+    <h3>En attente du premier appel</h3>
+    <p>Les dossiers transmis par MIKI apparaîtront ici automatiquement.</p>
+  </div>
+</main>
+
+<div id="overlay" class="overlay"></div>
+<aside id="panel" class="panel" aria-hidden="true">
+  <button class="panel-close" id="fermer" aria-label="Fermer">✕</button>
+  <div id="panel-contenu"></div>
+</aside>
+
+<script>
+  const LABELS = {
+    nom: "Nom",
+    prenom: "Prénom",
+    age: "Âge",
+    sexe: "Sexe",
+    situation: "Situation",
+    adresse: "Adresse"
+  };
+
+  const URGENCE_TEXTE = {
+    urgent: "⚠ En danger",
+    ok: "Pas en danger",
+    inconnu: "À évaluer"
+  };
+
+  let dossiersActuels = [];
+
+  function champVide(v) {
+    return v === null || v === undefined || v === "";
+  }
+
+  function rendreGrille(dossiers) {
+    const grille = document.getElementById("grille");
+    const vide = document.getElementById("vide");
+    const compteur = document.getElementById("compteur");
+
+    compteur.textContent = dossiers.length + (dossiers.length > 1 ? " dossiers" : " dossier");
+
+    if (dossiers.length === 0) {
+      grille.innerHTML = "";
+      vide.style.display = "block";
+      return;
+    }
+    vide.style.display = "none";
+
+    grille.innerHTML = dossiers.map(d => `
+      <div class="dossier" data-urgence="${d.urgence}" tabindex="0" data-id="${d.id}">
+        <p class="dossier-nom">${d.nom || "Nom inconnu"}${d.prenom ? " " + d.prenom : ""}</p>
+        <p class="dossier-meta">${d.age ? d.age + " ans · " : ""}${d.adresse || "Adresse non renseignée"}</p>
+        <span class="badge" data-urgence="${d.urgence}">${URGENCE_TEXTE[d.urgence]}</span>
+        <p class="dossier-time">Reçu à ${d.recu_le.split(" ")[1]}</p>
+      </div>
+    `).join("");
+
+    grille.querySelectorAll(".dossier").forEach(el => {
+      el.addEventListener("click", () => ouvrirPanel(el.dataset.id));
+      el.addEventListener("keydown", e => {
+        if (e.key === "Enter") ouvrirPanel(el.dataset.id);
+      });
+    });
+  }
+
+  function ouvrirPanel(id) {
+    const dossier = dossiersActuels.find(d => d.id === id);
+    if (!dossier) return;
+
+    const contenu = document.getElementById("panel-contenu");
+    contenu.innerHTML = `
+      <h2>${dossier.nom || "Nom inconnu"}${dossier.prenom ? " " + dossier.prenom : ""}</h2>
+      <p class="panel-time">Dossier reçu le ${dossier.recu_le}</p>
+      <div class="champ">
+        <div class="champ-label">Urgence</div>
+        <span class="badge" data-urgence="${dossier.urgence}">${URGENCE_TEXTE[dossier.urgence]}</span>
+      </div>
+      ${Object.keys(LABELS).map(cle => `
+        <div class="champ">
+          <div class="champ-label">${LABELS[cle]}</div>
+          <div class="champ-valeur ${champVide(dossier[cle]) ? 'absent' : ''}">
+            ${champVide(dossier[cle]) ? "Non renseigné" : dossier[cle]}
+          </div>
+        </div>
+      `).join("")}
+    `;
+
+    document.getElementById("overlay").classList.add("open");
+    document.getElementById("panel").classList.add("open");
+  }
+
+  function fermerPanel() {
+    document.getElementById("overlay").classList.remove("open");
+    document.getElementById("panel").classList.remove("open");
+  }
+
+  document.getElementById("fermer").addEventListener("click", fermerPanel);
+  document.getElementById("overlay").addEventListener("click", fermerPanel);
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") fermerPanel();
+  });
+
+  async function charger() {
+    try {
+      const res = await fetch("/api/fiches");
+      const data = await res.json();
+      dossiersActuels = data;
+      rendreGrille(data);
+    } catch (e) {
+      console.error("Erreur de chargement des dossiers :", e);
+    }
+  }
+
+  charger();
+  setInterval(charger, 3000);
+</script>
+
+</body>
+</html>
